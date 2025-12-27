@@ -642,7 +642,7 @@
                 <p id="resultSubtitleCapture" class="result-subtitle"></p>
                 <div id="resultDescriptionCapture" class="result-description-capture"></div>
                 <div id="resultTraitsCapture" class="traits"></div>
-                <div class="watermark">narosso.com</div>
+                <div class="watermark">@grow.naroso</div>
             </div>
 
             <!-- 실제 표시용 카드 -->
@@ -1047,15 +1047,17 @@
             }
             
             // 모바일 기기 확인
-            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+            const isAndroid = /Android/i.test(navigator.userAgent);
+            const isMobile = isIOS || isAndroid;
             
-            // 캡처용 카드를 화면에 보이게 (하지만 사용자는 못 봄)
+            // 캡처용 카드를 화면 밖에 완전히 보이게 배치
             captureCard.style.position = 'fixed';
-            captureCard.style.left = '50%';
-            captureCard.style.top = '50%';
-            captureCard.style.transform = 'translate(-50%, -50%)';
-            captureCard.style.zIndex = '-1';
-            captureCard.style.opacity = '0';
+            captureCard.style.left = '-9999px';
+            captureCard.style.top = '0';
+            captureCard.style.transform = 'none';
+            captureCard.style.zIndex = '9999';
+            captureCard.style.opacity = '1';
             
             // 로딩 표시
             const loadingDiv = document.createElement('div');
@@ -1085,43 +1087,169 @@
                 document.body.removeChild(loadingDiv);
                 
                 if (isMobile) {
-                    // 모바일: Share API로 앨범 저장
+                    // 모바일: 이미지를 새 창에 열어서 사용자가 직접 저장하도록
                     canvas.toBlob(async function(blob) {
-                        const file = new File([blob], '나로소_결과.png', { type: 'image/png' });
+                        const imageUrl = URL.createObjectURL(blob);
                         
-                        // Share API 사용 (앨범 저장 옵션 포함)
-                        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                            try {
-                                await navigator.share({
-                                    files: [file],
-                                    title: '나로소 감정테스트',
-                                    text: '나의 감정 친구 🦊'
-                                });
-                                return;
-                            } catch (error) {
-                                if (error.name === 'AbortError') {
-                                    return;
+                        if (isIOS) {
+                            // iOS: 새 창에 이미지 열기
+                            const newWindow = window.open('', '_blank');
+                            if (newWindow) {
+                                newWindow.document.write(`
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                        <style>
+                                            * { margin: 0; padding: 0; }
+                                            body { 
+                                                display: flex; 
+                                                flex-direction: column;
+                                                justify-content: center; 
+                                                align-items: center; 
+                                                min-height: 100vh; 
+                                                background: #f5f5f5;
+                                                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                                                padding: 20px;
+                                                box-sizing: border-box;
+                                            }
+                                            img { 
+                                                max-width: 100%; 
+                                                height: auto; 
+                                                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                                                border-radius: 10px;
+                                                margin-bottom: 20px;
+                                            }
+                                            .guide {
+                                                background: white;
+                                                padding: 20px;
+                                                border-radius: 15px;
+                                                text-align: center;
+                                                max-width: 400px;
+                                                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                                            }
+                                            .guide h2 {
+                                                color: #6B5B95;
+                                                font-size: 18px;
+                                                margin-bottom: 15px;
+                                            }
+                                            .guide p {
+                                                color: #666;
+                                                font-size: 14px;
+                                                line-height: 1.6;
+                                                margin-bottom: 10px;
+                                            }
+                                            .step {
+                                                background: #f9f9f9;
+                                                padding: 10px;
+                                                border-radius: 8px;
+                                                margin: 10px 0;
+                                                font-size: 13px;
+                                                color: #333;
+                                            }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <img src="${imageUrl}" alt="나로소 결과">
+                                        <div class="guide">
+                                            <h2>📱 사진 앱에 저장하기</h2>
+                                            <div class="step">
+                                                <strong>1️⃣</strong> 위 이미지를 <strong>길게 누르세요</strong>
+                                            </div>
+                                            <div class="step">
+                                                <strong>2️⃣</strong> "이미지 저장" 또는 "사진에 추가" 선택
+                                            </div>
+                                            <div class="step">
+                                                <strong>3️⃣</strong> 사진 앱에서 확인! ✅
+                                            </div>
+                                        </div>
+                                    </body>
+                                    </html>
+                                `);
+                                newWindow.document.close();
+                            } else {
+                                alert('⚠️ 팝업이 차단되었습니다.\n\n브라우저 설정에서 팝업을 허용해주세요!');
+                            }
+                        } else if (isAndroid) {
+                            // Android: Share API 우선, 실패 시 새 창
+                            if (navigator.share && navigator.canShare) {
+                                try {
+                                    const file = new File([blob], '나로소_결과.png', { type: 'image/png' });
+                                    if (navigator.canShare({ files: [file] })) {
+                                        await navigator.share({
+                                            files: [file],
+                                            title: '나로소 감정테스트',
+                                            text: '나의 감정 친구 🦊'
+                                        });
+                                        return;
+                                    }
+                                } catch (error) {
+                                    if (error.name === 'AbortError') {
+                                        return;
+                                    }
+                                    console.error('Share 에러:', error);
                                 }
-                                console.error('Share 에러:', error);
+                            }
+                            
+                            // Share API 실패 시 새 창에 이미지 열기
+                            const newWindow = window.open('', '_blank');
+                            if (newWindow) {
+                                newWindow.document.write(`
+                                    <!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+                                        <style>
+                                            * { margin: 0; padding: 0; }
+                                            body { 
+                                                display: flex; 
+                                                flex-direction: column;
+                                                justify-content: center; 
+                                                align-items: center; 
+                                                min-height: 100vh; 
+                                                background: #f5f5f5;
+                                                font-family: sans-serif;
+                                                padding: 20px;
+                                            }
+                                            img { 
+                                                max-width: 100%; 
+                                                height: auto; 
+                                                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                                                border-radius: 10px;
+                                                margin-bottom: 20px;
+                                            }
+                                            .guide {
+                                                background: white;
+                                                padding: 20px;
+                                                border-radius: 15px;
+                                                text-align: center;
+                                                max-width: 400px;
+                                                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                                            }
+                                            .guide h2 {
+                                                color: #6B5B95;
+                                                font-size: 18px;
+                                                margin-bottom: 15px;
+                                            }
+                                            .guide p {
+                                                color: #666;
+                                                font-size: 14px;
+                                                line-height: 1.6;
+                                            }
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <img src="${imageUrl}" alt="나로소 결과">
+                                        <div class="guide">
+                                            <h2>📱 갤러리에 저장하기</h2>
+                                            <p><strong>이미지를 길게 눌러</strong><br>"이미지 저장"을 선택하세요!</p>
+                                        </div>
+                                    </body>
+                                    </html>
+                                `);
+                                newWindow.document.close();
                             }
                         }
-                        
-                        // Share API 없거나 실패: 다운로드
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.download = `나로소_${Date.now()}.png`;
-                        link.href = url;
-                        link.click();
-                        URL.revokeObjectURL(url);
-                        
-                        setTimeout(() => {
-                            const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-                            if (isIOS) {
-                                alert('📥 이미지 다운로드 완료!\n\n📱 사진 앱에 저장하려면:\n\n1️⃣ 파일 앱 열기\n2️⃣ "다운로드" 폴더에서 이미지 찾기\n3️⃣ 이미지 길게 누르기\n4️⃣ "공유" 선택\n5️⃣ "이미지 저장" 선택\n\n✅ 사진 앱에 저장됩니다!');
-                            } else {
-                                alert('✅ 다운로드 완료!\n\n갤러리나 다운로드 폴더를 확인하세요 📂');
-                            }
-                        }, 500);
                     }, 'image/png');
                 } else {
                     // PC: 자동 다운로드
