@@ -37,6 +37,9 @@
                 return;
             }
             
+            // 모바일 기기 확인
+            const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+            
             // 로딩 표시
             const loadingDiv = document.createElement('div');
             loadingDiv.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(107, 91, 149, 0.95); color: white; padding: 30px 50px; border-radius: 20px; font-size: 18px; z-index: 10000; font-weight: bold;';
@@ -58,27 +61,99 @@
                 // 로딩 제거
                 document.body.removeChild(loadingDiv);
                 
-                // Canvas를 Blob으로 변환
-                canvas.toBlob(function(blob) {
-                    // 다운로드 링크 생성
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    const date = new Date().toISOString().slice(0,10);
-                    link.download = `나로소_감정테스트_${date}.png`;
-                    link.href = url;
-                    link.click();
-                    
-                    // 메모리 정리
-                    URL.revokeObjectURL(url);
-                    
-                    // 성공 알림
-                    alert('✅ 이미지가 저장되었습니다!\n\n다운로드 폴더를 확인해주세요! 📂');
-                }, 'image/png');
+                if (isMobile) {
+                    // 모바일: 이미지를 새 창에서 열기 (길게 눌러 저장 가능)
+                    canvas.toBlob(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        
+                        // 새 창에서 이미지 열기
+                        const newWindow = window.open('', '_blank');
+                        if (newWindow) {
+                            newWindow.document.write(`
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <title>나로소 결과</title>
+                                    <style>
+                                        body {
+                                            margin: 0;
+                                            padding: 20px;
+                                            background: #f5f5f5;
+                                            display: flex;
+                                            flex-direction: column;
+                                            align-items: center;
+                                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                                        }
+                                        .guide {
+                                            background: white;
+                                            padding: 20px;
+                                            border-radius: 15px;
+                                            margin-bottom: 20px;
+                                            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                                            text-align: center;
+                                            max-width: 400px;
+                                        }
+                                        .guide h2 {
+                                            color: #6B5B95;
+                                            margin-top: 0;
+                                        }
+                                        .guide p {
+                                            color: #666;
+                                            line-height: 1.6;
+                                        }
+                                        img {
+                                            max-width: 100%;
+                                            height: auto;
+                                            border-radius: 15px;
+                                            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                                        }
+                                        .btn {
+                                            display: inline-block;
+                                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                            color: white;
+                                            padding: 12px 30px;
+                                            border-radius: 25px;
+                                            text-decoration: none;
+                                            margin-top: 15px;
+                                            font-weight: bold;
+                                        }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="guide">
+                                        <h2>📸 이미지 저장하기</h2>
+                                        <p><strong>이미지를 길게 눌러</strong> "이미지 저장" 또는 "사진에 추가"를 선택하세요!</p>
+                                        <p style="font-size: 14px; color: #999;">💡 iOS: 이미지 길게 누르기<br>💡 Android: 이미지 길게 누르기</p>
+                                    </div>
+                                    <img src="${url}" alt="나로소 결과">
+                                </body>
+                                </html>
+                            `);
+                            newWindow.document.close();
+                        }
+                        
+                        // 안내 메시지
+                        setTimeout(() => {
+                            alert('📱 이미지를 길게 눌러서\n"이미지 저장" 또는 "사진에 추가"를\n선택하세요!');
+                        }, 500);
+                    }, 'image/png');
+                } else {
+                    // PC: 바로 다운로드
+                    canvas.toBlob(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        const date = new Date().toISOString().slice(0,10);
+                        link.download = `나로소_감정테스트_${date}.png`;
+                        link.href = url;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        alert('✅ 이미지가 저장되었습니다!\n\n다운로드 폴더를 확인해주세요! 📂');
+                    }, 'image/png');
+                }
             }).catch(error => {
                 document.body.removeChild(loadingDiv);
                 console.error('이미지 생성 실패:', error);
-                
-                // 실패 시 스크린샷 가이드
                 alert('⚠️ 자동 저장에 실패했습니다.\n\n스크린샷으로 저장해주세요:\n\n📱 iPhone: 측면버튼 + 볼륨업\n📱 Android: 전원버튼 + 볼륨다운\n💻 Windows: Win + Shift + S\n💻 Mac: Cmd + Shift + 4');
             });
         }
